@@ -6,8 +6,11 @@ export default {
     orders: 'Orders',
     finance: 'Finance',
     demandForecast: 'Demand Forecast',
+    restocking: 'Restocking',
+    reports: 'Reports',
     companyName: 'Catalyst Components',
-    subtitle: 'Inventory Management System'
+    subtitle: 'Inventory Management System',
+    toggleSidebar: 'Toggle sidebar'
   },
 
   // Dashboard
@@ -112,6 +115,10 @@ export default {
     onTimeDelivery: 'On-Time Delivery',
     itemsCount: '{count} items',
     quantity: 'Qty',
+    submittedOrders: 'Submitted Orders',
+    submittedOrdersNote: 'Restocking orders submitted this session. These are held in memory and are cleared when the server restarts.',
+    leadTime: 'Lead Time',
+    leadTimeDays: '{days} days',
     table: {
       orderNumber: 'Order Number',
       orderId: 'Order ID',
@@ -188,6 +195,72 @@ export default {
     }
   },
 
+  // Restocking
+  restocking: {
+    title: 'Restocking',
+    description: 'Set a budget and see what to reorder from the demand forecast',
+    availableBudget: 'Available Budget',
+    budgetHelp: 'Drag to set how much you have to spend this cycle',
+    allocated: 'Allocated',
+    remaining: 'Remaining',
+    itemsSelected: 'Items Selected',
+    recommendations: 'Recommended Restocking',
+    planCost: 'Restocking everything would cost {cost}',
+    placeOrder: 'Place Order',
+    placingOrder: 'Placing order...',
+    orderPlaced: 'Restocking order {orderNumber} submitted.',
+    viewInOrders: 'View in Orders',
+    noRecommendations: 'No items need restocking for the current filters.',
+    included: 'Included',
+    overBudget: 'Over budget',
+    urgency: 'Urgency',
+    table: {
+      sku: 'SKU',
+      itemName: 'Item Name',
+      warehouse: 'Warehouse',
+      category: 'Category',
+      urgency: 'Urgency',
+      onHand: 'On Hand',
+      forecast: 'Forecast',
+      recommendedQty: 'Recommended Qty',
+      unitCost: 'Unit Cost',
+      estimatedCost: 'Est. Cost',
+      leadTime: 'Lead Time',
+      included: 'Included'
+    }
+  },
+
+  // Purchase Orders
+  purchaseOrder: {
+    createButton: 'Create PO',
+    viewButton: 'View PO',
+    createTitle: 'Create Purchase Order',
+    viewTitle: 'Purchase Order Details',
+    supplierName: 'Supplier Name',
+    supplierNamePlaceholder: 'Enter supplier name...',
+    quantity: 'Quantity',
+    unitCost: 'Unit Cost',
+    totalCost: 'Total Cost',
+    expectedDeliveryDate: 'Expected Delivery Date',
+    notes: 'Notes',
+    notesPlaceholder: 'Optional notes...',
+    status: 'Status',
+    createdDate: 'Created Date',
+    submit: 'Create Purchase Order',
+    submitting: 'Creating...',
+    errors: {
+      supplierRequired: 'Supplier name is required',
+      quantityPositive: 'Quantity must be greater than 0',
+      unitCostRequired: 'Unit cost is required',
+      unitCostNonNegative: 'Unit cost cannot be negative',
+      deliveryDateRequired: 'Expected delivery date is required',
+      createFailed: 'Failed to create purchase order. Please try again.',
+      duplicate: 'This item already has a purchase order.',
+      loadFailed: 'Failed to load purchase order. Please try again.',
+      notFound: 'No purchase order found for this item.'
+    }
+  },
+
   // Filters
   filters: {
     timePeriod: 'Time Period',
@@ -211,9 +284,9 @@ export default {
 
   // Trends
   trends: {
-    increasing: 'increasing',
-    stable: 'stable',
-    decreasing: 'decreasing'
+    increasing: 'Increasing',
+    stable: 'Stable',
+    decreasing: 'Decreasing'
   },
 
   // Priority

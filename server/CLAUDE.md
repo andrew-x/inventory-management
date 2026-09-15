@@ -231,7 +231,7 @@ server/
 ### Common Pitfalls
 
 **Avoid:**
-- ❌ Mutating global data (filter on copies)
+- ❌ Mutating global data *while filtering* (filter on copies). Deliberate writes are fine — `POST /api/restock-orders` appends to the module-level `restock_orders` list on purpose. Just remember nothing persists across a restart, and tests that write must reset it.
 - ❌ Missing Pydantic model updates when JSON changes
 - ❌ Inconsistent filter parameter names across endpoints
 - ❌ Returning raw dict instead of Pydantic model

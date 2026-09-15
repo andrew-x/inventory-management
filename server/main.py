@@ -1,8 +1,12 @@
+import math
+import threading
+from datetime import datetime, timedelta
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 from pydantic import BaseModel
-from mock_data import inventory_items, orders, demand_forecasts, backlog_items, spending_summary, monthly_spending, category_spending, recent_transactions, purchase_orders
+from mock_data import inventory_items, orders, demand_forecasts, backlog_items, spending_summary, monthly_spending, category_spending, recent_transactions, purchase_orders, restock_orders
 
 app = FastAPI(title="Factory Inventory Management System")
 
@@ -45,6 +49,101 @@ def apply_filters(items: list, warehouse: Optional[str] = None, category: Option
         filtered = [item for item in filtered if item.get('status', '').lower() == status.lower()]
 
     return filtered
+
+# --- Restocking ---------------------------------------------------------
+# No lead-time field exists anywhere in the data, so lead times are derived
+# from the shipping origin and the handling a category needs.
+WAREHOUSE_LEAD_TIME_DAYS = {'San Francisco': 5, 'London': 10, 'Tokyo': 14}
+CATEGORY_LEAD_TIME_MODIFIER = {
+    'circuit boards': 3,
+    'sensors': 2,
+    'actuators': 4,
+    'controllers': 5,
+    'power supplies': 1,
+}
+DEFAULT_LEAD_TIME_DAYS = 7
+
+# POST handlers are sync `def`, so Starlette runs them in a threadpool and two
+# submits can interleave. Reading len(restock_orders) and appending must happen
+# as one atomic step or both orders get the same id and order_number.
+#
+# No test covers this: the race window is microseconds wide, so a concurrency
+# test passes just as readily on the broken version. Verified by hand instead --
+# widening the window with a sleep between the read and the append yields 43
+# unique numbers out of 50 submits without this lock, and 50/50 with it.
+# Note this project runs on free-threaded CPython 3.14 (GIL disabled), so there
+# is no interpreter-level serialisation to fall back on.
+_restock_order_lock = threading.Lock()
+
+# Purchase orders are appended at runtime the same way, and the sequence number
+# in their id is derived from the list length, so they need the same guard.
+_purchase_order_lock = threading.Lock()
+
+# Urgency must be ranked numerically. Sorting the strings directly would order
+# them 'high' < 'low' < 'medium', quietly putting low-urgency items ahead of
+# medium ones and inverting the whole recommendation.
+URGENCY_RANK = {'high': 0, 'medium': 1, 'low': 2}
+
+# Order enough to cover the forecast plus a safety buffer.
+SAFETY_STOCK_FACTOR = 1.1
+
+
+def get_lead_time_days(warehouse: Optional[str], category: Optional[str]) -> int:
+    """Derive a deterministic delivery lead time for a restock line."""
+    base = WAREHOUSE_LEAD_TIME_DAYS.get(warehouse or '', DEFAULT_LEAD_TIME_DAYS)
+    return base + CATEGORY_LEAD_TIME_MODIFIER.get((category or '').lower(), 0)
+
+
+def build_restock_candidates() -> list:
+    """Join demand forecasts to inventory and size a restock for each item.
+
+    current_demand is units demanded, not units held, so the order quantity is
+    sized against the item's quantity_on_hand.
+    """
+    inventory_by_sku = {item['sku']: item for item in inventory_items}
+    candidates = []
+
+    for forecast in demand_forecasts:
+        item = inventory_by_sku.get(forecast['item_sku'])
+        if not item:
+            # Demand for a SKU we do not stock: nothing to restock.
+            continue
+
+        target_stock = math.ceil(forecast['forecasted_demand'] * SAFETY_STOCK_FACTOR)
+        quantity_on_hand = item['quantity_on_hand']
+        recommended_quantity = max(target_stock - quantity_on_hand, 0)
+        if recommended_quantity == 0:
+            continue
+
+        # target_stock > 0 whenever forecasted_demand > 0, so this is safe.
+        coverage_gap = (target_stock - quantity_on_hand) / target_stock
+
+        if quantity_on_hand <= item['reorder_point'] or coverage_gap >= 0.5:
+            urgency = 'high'
+        elif coverage_gap >= 0.2:
+            urgency = 'medium'
+        else:
+            urgency = 'low'
+
+        candidates.append({
+            'item_sku': item['sku'],
+            'item_name': item['name'],
+            'category': item['category'],
+            'warehouse': item['warehouse'],
+            'unit_cost': item['unit_cost'],
+            'quantity_on_hand': quantity_on_hand,
+            'reorder_point': item['reorder_point'],
+            'current_demand': forecast['current_demand'],
+            'forecasted_demand': forecast['forecasted_demand'],
+            'recommended_quantity': recommended_quantity,
+            'estimated_cost': round(recommended_quantity * item['unit_cost'], 2),
+            'urgency': urgency,
+            'coverage_gap': coverage_gap,
+            'lead_time_days': get_lead_time_days(item['warehouse'], item['category']),
+        })
+
+    candidates.sort(key=lambda c: (URGENCY_RANK[c['urgency']], -c['coverage_gap']))
+    return candidates
 
 # CORS middleware
 app.add_middleware(
@@ -120,6 +219,59 @@ class CreatePurchaseOrderRequest(BaseModel):
     expected_delivery_date: str
     notes: Optional[str] = None
 
+class RestockRecommendation(BaseModel):
+    item_sku: str
+    item_name: str
+    category: str
+    warehouse: str
+    unit_cost: float
+    quantity_on_hand: int
+    reorder_point: int
+    current_demand: int
+    forecasted_demand: int
+    recommended_quantity: int
+    estimated_cost: float
+    urgency: str
+    lead_time_days: int
+    included: bool
+
+class RestockPlan(BaseModel):
+    budget: float
+    total_cost: float
+    remaining_budget: float
+    total_recommended_cost: float
+    included_count: int
+    items: List[RestockRecommendation]
+
+class RestockOrderLine(BaseModel):
+    item_sku: str
+    item_name: str
+    warehouse: str
+    category: str
+    quantity: int
+    unit_cost: float
+    line_total: float
+    lead_time_days: int
+
+class RestockOrder(BaseModel):
+    id: str
+    order_number: str
+    status: str
+    created_date: str
+    budget: float
+    total_cost: float
+    items: List[RestockOrderLine]
+    lead_time_days: int
+    expected_delivery: str
+
+class CreateRestockOrderLine(BaseModel):
+    item_sku: str
+    quantity: int
+
+class CreateRestockOrderRequest(BaseModel):
+    budget: float
+    items: List[CreateRestockOrderLine]
+
 # API endpoints
 @app.get("/")
 def root():
@@ -179,6 +331,191 @@ def get_backlog():
         result.append(item_dict)
     return result
 
+@app.post("/api/purchase-orders", response_model=PurchaseOrder, status_code=201)
+def create_purchase_order(request: CreatePurchaseOrderRequest):
+    """Raise a purchase order against a backlog item.
+
+    Like restock_orders, this appends to a module-level list, so the order is
+    visible to later requests but does not survive a restart.
+    """
+    backlog_item = next(
+        (item for item in backlog_items if item["id"] == request.backlog_item_id),
+        None
+    )
+    if not backlog_item:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown backlog item {request.backlog_item_id}"
+        )
+
+    if request.quantity <= 0:
+        raise HTTPException(status_code=400, detail="Quantity must be greater than zero")
+
+    if request.unit_cost < 0:
+        raise HTTPException(status_code=400, detail="Unit cost cannot be negative")
+
+    if not request.supplier_name.strip():
+        raise HTTPException(status_code=400, detail="Supplier name is required")
+
+    created = datetime.now()
+
+    with _purchase_order_lock:
+        # One PO per backlog item: the dashboard swaps "Create PO" for "View PO"
+        # off this check, and View can only ever show one. Inside the lock so two
+        # concurrent submits for the same item cannot both pass it.
+        if any(po["backlog_item_id"] == request.backlog_item_id for po in purchase_orders):
+            raise HTTPException(
+                status_code=409,
+                detail=f"Backlog item {request.backlog_item_id} already has a purchase order"
+            )
+
+        sequence = len(purchase_orders) + 1
+        purchase_order = {
+            "id": f"PO-{created.year}-{sequence:04d}",
+            "backlog_item_id": request.backlog_item_id,
+            "supplier_name": request.supplier_name.strip(),
+            "quantity": request.quantity,
+            "unit_cost": request.unit_cost,
+            "expected_delivery_date": request.expected_delivery_date,
+            "status": "Processing",
+            "created_date": created.strftime("%Y-%m-%d"),
+            "notes": request.notes,
+        }
+        purchase_orders.append(purchase_order)
+
+    return purchase_order
+
+@app.get("/api/purchase-orders/{backlog_item_id}", response_model=PurchaseOrder)
+def get_purchase_order_by_backlog_item(backlog_item_id: str):
+    """Get the purchase order raised against a backlog item, if there is one."""
+    purchase_order = next(
+        (po for po in purchase_orders if po["backlog_item_id"] == backlog_item_id),
+        None
+    )
+    if not purchase_order:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Purchase order not found for backlog item {backlog_item_id}"
+        )
+    return purchase_order
+
+@app.get("/api/restock/recommendations", response_model=RestockPlan)
+def get_restock_recommendations(
+    budget: float = 0,
+    warehouse: Optional[str] = None,
+    category: Optional[str] = None
+):
+    """Recommend which forecasted items to restock within a budget.
+
+    Candidates are ranked by urgency. Walking the full ranked list rather than
+    stopping at the first item that does not fit lets cheaper, lower-priority
+    items soak up the leftover budget.
+    """
+    candidates = apply_filters(build_restock_candidates(), warehouse, category)
+
+    remaining = budget
+    total_cost = 0.0
+    included_count = 0
+    items = []
+
+    for candidate in candidates:
+        item = {k: v for k, v in candidate.items() if k != 'coverage_gap'}
+        if candidate['estimated_cost'] <= remaining:
+            item['included'] = True
+            remaining -= candidate['estimated_cost']
+            total_cost += candidate['estimated_cost']
+            included_count += 1
+        else:
+            item['included'] = False
+        items.append(item)
+
+    return {
+        'budget': budget,
+        'total_cost': round(total_cost, 2),
+        'remaining_budget': round(remaining, 2),
+        'total_recommended_cost': round(sum(c['estimated_cost'] for c in candidates), 2),
+        'included_count': included_count,
+        'items': items
+    }
+
+@app.post("/api/restock-orders", response_model=RestockOrder, status_code=201)
+def create_restock_order(request: CreateRestockOrderRequest):
+    """Submit a restocking order.
+
+    Only SKUs and quantities are accepted; costs are recomputed here so the
+    order total cannot be dictated by the caller.
+    """
+    if not request.items:
+        raise HTTPException(status_code=400, detail="A restock order must contain at least one item")
+
+    inventory_by_sku = {item['sku']: item for item in inventory_items}
+    lines = []
+    seen_skus = set()
+
+    for line in request.items:
+        item = inventory_by_sku.get(line.item_sku)
+        if not item:
+            raise HTTPException(status_code=400, detail=f"Unknown item SKU {line.item_sku}")
+        if line.quantity <= 0:
+            raise HTTPException(status_code=400, detail=f"Quantity for {line.item_sku} must be greater than zero")
+        if line.item_sku in seen_skus:
+            raise HTTPException(status_code=400, detail=f"Duplicate item SKU {line.item_sku} in order")
+        seen_skus.add(line.item_sku)
+
+        lines.append({
+            'item_sku': item['sku'],
+            'item_name': item['name'],
+            'warehouse': item['warehouse'],
+            'category': item['category'],
+            'quantity': line.quantity,
+            'unit_cost': item['unit_cost'],
+            'line_total': round(line.quantity * item['unit_cost'], 2),
+            'lead_time_days': get_lead_time_days(item['warehouse'], item['category'])
+        })
+
+    created = datetime.now()
+    lead_time_days = max(line['lead_time_days'] for line in lines)
+
+    with _restock_order_lock:
+        sequence = len(restock_orders) + 1
+        order = {
+            'id': str(sequence),
+            'order_number': f"RST-{created.year}-{sequence:04d}",
+            'status': 'Processing',
+            'created_date': created.strftime('%Y-%m-%dT%H:%M:%S'),
+            'budget': request.budget,
+            'total_cost': round(sum(line['line_total'] for line in lines), 2),
+            'items': lines,
+            'lead_time_days': lead_time_days,
+            'expected_delivery': (created + timedelta(days=lead_time_days)).strftime('%Y-%m-%dT%H:%M:%S')
+        }
+        restock_orders.append(order)
+
+    return order
+
+@app.get("/api/restock-orders", response_model=List[RestockOrder])
+def get_restock_orders(
+    warehouse: Optional[str] = None,
+    category: Optional[str] = None
+):
+    """Get submitted restocking orders, newest first.
+
+    A single order can span warehouses and categories, so it matches a filter
+    when any of its lines does. Filtering on a scalar order-level field would
+    hide an order the user just placed.
+    """
+    filtered = restock_orders
+
+    if warehouse and warehouse != 'all':
+        filtered = [o for o in filtered
+                    if any(line['warehouse'] == warehouse for line in o['items'])]
+
+    if category and category != 'all':
+        filtered = [o for o in filtered
+                    if any(line['category'].lower() == category.lower() for line in o['items'])]
+
+    return list(reversed(filtered))
+
 @app.get("/api/dashboard/summary")
 def get_dashboard_summary(
     warehouse: Optional[str] = None,
@@ -219,8 +556,24 @@ def get_monthly_spending():
 
 @app.get("/api/spending/categories")
 def get_category_spending():
-    """Get spending by category"""
-    return category_spending
+    """Get spending by category, with each category's share of the total.
+
+    The share is derived here rather than stored alongside the amounts. It used
+    to be a hardcoded field in spending.json that had drifted out of step with
+    them -- the four values summed to 123.6%, and Components was labelled a
+    smaller share than Raw Materials despite being the larger amount. The client
+    uses this number for the bar width as well as the label, so the bars were
+    visibly wrong too.
+    """
+    total = sum(category['amount'] for category in category_spending)
+
+    return [
+        {
+            **category,
+            'percentage': round(category['amount'] / total * 100, 1) if total else 0.0,
+        }
+        for category in category_spending
+    ]
 
 @app.get("/api/spending/transactions")
 def get_recent_transactions():

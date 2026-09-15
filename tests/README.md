@@ -9,10 +9,10 @@ tests/
 ├── pytest.ini          # Pytest configuration
 ├── backend/            # Backend API tests
 │   ├── conftest.py     # Test fixtures and configuration
-│   ├── test_inventory.py      # Inventory endpoint tests (10 tests)
-│   ├── test_orders.py         # Orders endpoint tests (15 tests)
+│   ├── test_inventory.py      # Inventory endpoint tests (9 tests)
 │   ├── test_dashboard.py      # Dashboard endpoint tests (13 tests)
-│   └── test_misc_endpoints.py # Demand, backlog, spending tests (13 tests)
+│   ├── test_misc_endpoints.py # Demand, backlog, spending tests (18 tests)
+│   └── test_restocking.py     # Restocking endpoint tests (33 tests)
 └── README.md           # This file
 ```
 
@@ -21,36 +21,40 @@ tests/
 ### Run all tests
 ```bash
 cd tests
-uv run pytest -v
+uv run --project ../server pytest
 ```
+
+The suite has no project file of its own, so it borrows the `server` project's
+venv where the dev dependencies live. Plain `uv run pytest` fails with
+`Failed to spawn: pytest`.
 
 ### Run specific test file
 ```bash
 cd tests
-uv run pytest backend/test_inventory.py -v
+uv run --project ../server pytest backend/test_inventory.py -v
 ```
 
 ### Run specific test class
 ```bash
 cd tests
-uv run pytest backend/test_inventory.py::TestInventoryEndpoints -v
+uv run --project ../server pytest backend/test_inventory.py::TestInventoryEndpoints -v
 ```
 
 ### Run specific test
 ```bash
 cd tests
-uv run pytest backend/test_inventory.py::TestInventoryEndpoints::test_get_all_inventory -v
+uv run --project ../server pytest backend/test_inventory.py::TestInventoryEndpoints::test_get_all_inventory -v
 ```
 
 ### Run with coverage (requires pytest-cov)
 ```bash
 cd tests
-uv run pytest --cov=../server --cov-report=html
+uv run --project ../server pytest --cov=../server --cov-report=html
 ```
 
 ## Test Coverage
 
-**Total: 51 tests** covering all API endpoints:
+**Total: 73 tests** covering all API endpoints:
 
 ### Inventory Endpoints (10 tests)
 - ✓ Get all inventory items
@@ -150,7 +154,7 @@ To integrate with CI/CD pipelines:
 - name: Run API Tests
   run: |
     cd tests
-    uv run pytest -v --tb=short
+    uv run --project ../server pytest -v --tb=short
 ```
 
 ## Notes

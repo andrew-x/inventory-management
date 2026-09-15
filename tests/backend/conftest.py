@@ -11,7 +11,36 @@ from fastapi.testclient import TestClient
 server_path = Path(__file__).parent.parent.parent / "server"
 sys.path.insert(0, str(server_path))
 
+import main
 from main import app
+
+
+@pytest.fixture(autouse=True)
+def clear_restock_orders():
+    """Reset submitted restock orders around every test.
+
+    POST /api/restock-orders appends to a module-level list that lives for the
+    whole process, so without this tests leak state into each other. The list
+    must be cleared in place -- rebinding the name here would not touch the
+    object main.py and mock_data.py both hold a reference to.
+    """
+    main.restock_orders.clear()
+    yield
+    main.restock_orders.clear()
+
+
+@pytest.fixture(autouse=True)
+def clear_purchase_orders():
+    """Reset raised purchase orders around every test.
+
+    POST /api/purchase-orders appends to a module-level list for the life of the
+    process, and it allows only one order per backlog item -- so without this a
+    test that raises an order makes every later test for the same item 409.
+    Cleared in place, for the same reason as clear_restock_orders.
+    """
+    main.purchase_orders.clear()
+    yield
+    main.purchase_orders.clear()
 
 
 @pytest.fixture

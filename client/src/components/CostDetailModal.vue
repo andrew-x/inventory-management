@@ -15,8 +15,8 @@
           <div class="modal-body">
             <div class="cost-summary">
               <div class="summary-card total">
-                <div class="summary-label">Total Costs</div>
-                <div class="summary-value">{{ currencySymbol }}{{ totalCosts.toLocaleString() }}</div>
+                <div class="summary-label">Total costs</div>
+                <div class="summary-value num">{{ currencySymbol }}{{ totalCosts.toLocaleString() }}</div>
               </div>
             </div>
 
@@ -31,10 +31,10 @@
                   </div>
                   <div class="cost-info">
                     <div class="cost-name">Procurement</div>
-                    <div class="cost-amount">{{ currencySymbol }}{{ costData.procurement.toLocaleString() }}</div>
+                    <div class="cost-amount num">{{ currencySymbol }}{{ costData.procurement.toLocaleString() }}</div>
                   </div>
                 </div>
-                <div class="cost-percentage">{{ getProcurementPercentage() }}% of total</div>
+                <div class="cost-percentage"><span class="num">{{ getProcurementPercentage() }}</span>% of total</div>
               </div>
 
               <div class="cost-item operational">
@@ -47,10 +47,10 @@
                   </div>
                   <div class="cost-info">
                     <div class="cost-name">Operational</div>
-                    <div class="cost-amount">{{ currencySymbol }}{{ costData.operational.toLocaleString() }}</div>
+                    <div class="cost-amount num">{{ currencySymbol }}{{ costData.operational.toLocaleString() }}</div>
                   </div>
                 </div>
-                <div class="cost-percentage">{{ getOperationalPercentage() }}% of total</div>
+                <div class="cost-percentage"><span class="num">{{ getOperationalPercentage() }}</span>% of total</div>
               </div>
 
               <div class="cost-item labor">
@@ -63,10 +63,10 @@
                   </div>
                   <div class="cost-info">
                     <div class="cost-name">Labor</div>
-                    <div class="cost-amount">{{ currencySymbol }}{{ costData.labor.toLocaleString() }}</div>
+                    <div class="cost-amount num">{{ currencySymbol }}{{ costData.labor.toLocaleString() }}</div>
                   </div>
                 </div>
-                <div class="cost-percentage">{{ getLaborPercentage() }}% of total</div>
+                <div class="cost-percentage"><span class="num">{{ getLaborPercentage() }}</span>% of total</div>
               </div>
 
               <div class="cost-item overhead">
@@ -78,10 +78,10 @@
                   </div>
                   <div class="cost-info">
                     <div class="cost-name">Overhead</div>
-                    <div class="cost-amount">{{ currencySymbol }}{{ costData.overhead.toLocaleString() }}</div>
+                    <div class="cost-amount num">{{ currencySymbol }}{{ costData.overhead.toLocaleString() }}</div>
                   </div>
                 </div>
-                <div class="cost-percentage">{{ getOverheadPercentage() }}% of total</div>
+                <div class="cost-percentage"><span class="num">{{ getOverheadPercentage() }}</span>% of total</div>
               </div>
             </div>
           </div>
@@ -152,22 +152,19 @@ const close = () => {
 <style scoped>
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  padding: 1rem;
+  padding: var(--space-4);
 }
 
 .modal-container {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
   max-width: 600px;
   width: 100%;
   max-height: 90vh;
@@ -180,79 +177,76 @@ const close = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border);
 }
 
 .modal-title {
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 700;
-  color: #0f172a;
-  letter-spacing: -0.025em;
+  color: var(--text);
 }
 
 .close-button {
   background: none;
   border: none;
-  color: #64748b;
+  color: var(--text-muted);
   cursor: pointer;
-  padding: 0.5rem;
+  padding: var(--space-2);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   transition: all 0.15s ease;
 }
 
 .close-button:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: var(--canvas);
+  color: var(--text);
 }
 
 .modal-body {
   flex: 1;
   overflow-y: auto;
-  padding: 2rem;
+  padding: var(--space-5);
 }
 
 .cost-summary {
-  margin-bottom: 2rem;
+  margin-bottom: var(--space-5);
 }
 
 .summary-card {
-  padding: 1.5rem;
-  border-radius: 10px;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
   text-align: center;
 }
 
 .summary-card.total {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, var(--accent) 100%);
   color: white;
 }
 
 .summary-label {
-  font-size: 0.875rem;
+  font-size: 0.813rem;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
   opacity: 0.9;
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-1);
 }
 
 .summary-value {
-  font-size: 2.25rem;
+  font-size: 1.875rem;
   font-weight: 700;
 }
 
 .cost-breakdown {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-3);
 }
 
 .cost-item {
-  padding: 1.25rem;
-  border-radius: 10px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
   border: 2px solid;
 }
 
@@ -279,14 +273,14 @@ const close = () => {
 .cost-header {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 0.5rem;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
 }
 
 .cost-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -304,12 +298,12 @@ const close = () => {
 }
 
 .cost-item.labor .cost-icon {
-  background: #10b981;
+  background: var(--success);
   color: white;
 }
 
 .cost-item.overhead .cost-icon {
-  background: #f59e0b;
+  background: var(--warning);
   color: white;
 }
 
@@ -319,46 +313,46 @@ const close = () => {
 
 .cost-name {
   font-weight: 600;
-  color: #0f172a;
-  font-size: 1rem;
-  margin-bottom: 0.25rem;
+  color: var(--text);
+  font-size: 0.938rem;
+  margin-bottom: var(--space-1);
 }
 
 .cost-amount {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text);
 }
 
 .cost-percentage {
-  font-size: 0.875rem;
-  color: #64748b;
+  font-size: 0.813rem;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
 .modal-footer {
-  padding: 1.5rem;
-  border-top: 1px solid #e2e8f0;
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--border);
   display: flex;
   justify-content: flex-end;
 }
 
 .btn-secondary {
-  padding: 0.625rem 1.25rem;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  padding: var(--space-2) var(--space-4);
+  background: var(--canvas);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   font-weight: 500;
   font-size: 0.875rem;
-  color: #334155;
+  color: var(--text);
   cursor: pointer;
   transition: all 0.15s ease;
   font-family: inherit;
 }
 
 .btn-secondary:hover {
-  background: #e2e8f0;
-  border-color: #cbd5e1;
+  background: var(--border);
+  border-color: var(--border-strong);
 }
 
 /* Modal transition animations */
@@ -380,5 +374,21 @@ const close = () => {
 .modal-enter-from .modal-container,
 .modal-leave-to .modal-container {
   transform: scale(0.95);
+}
+
+@media (max-width: 640px) {
+  .modal-overlay {
+    padding: var(--space-2);
+  }
+
+  .modal-container {
+    max-height: 95vh;
+  }
+
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    padding: var(--space-4);
+  }
 }
 </style>

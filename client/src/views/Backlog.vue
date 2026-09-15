@@ -10,20 +10,20 @@
     <div v-else>
       <div class="stats-grid">
         <div class="stat-card danger">
-          <div class="stat-label">High Priority</div>
-          <div class="stat-value">{{ getBacklogByPriority('high').length }}</div>
+          <div class="stat-label">High priority</div>
+          <div class="stat-value num">{{ getBacklogByPriority('high').length }}</div>
         </div>
         <div class="stat-card warning">
-          <div class="stat-label">Medium Priority</div>
-          <div class="stat-value">{{ getBacklogByPriority('medium').length }}</div>
+          <div class="stat-label">Medium priority</div>
+          <div class="stat-value num">{{ getBacklogByPriority('medium').length }}</div>
         </div>
         <div class="stat-card info">
-          <div class="stat-label">Low Priority</div>
-          <div class="stat-value">{{ getBacklogByPriority('low').length }}</div>
+          <div class="stat-label">Low priority</div>
+          <div class="stat-value num">{{ getBacklogByPriority('low').length }}</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Total Backlog Items</div>
-          <div class="stat-value">{{ backlogItems.length }}</div>
+          <div class="stat-label">Total backlog items</div>
+          <div class="stat-value num">{{ backlogItems.length }}</div>
         </div>
       </div>
 
@@ -31,8 +31,8 @@
         <div class="card-header">
           <h3 class="card-title">Backlog Items</h3>
         </div>
-        <div v-if="backlogItems.length === 0" style="padding: 3rem; text-align: center;">
-          <p style="font-size: 1.125rem; color: #10b981; font-weight: 600;">
+        <div v-if="backlogItems.length === 0" class="empty-state">
+          <p class="empty-message">
             ✓ No backlog items - all orders can be fulfilled!
           </p>
         </div>
@@ -42,28 +42,28 @@
               <tr>
                 <th>Order ID</th>
                 <th>SKU</th>
-                <th>Item Name</th>
-                <th>Quantity Needed</th>
-                <th>Quantity Available</th>
+                <th>Item name</th>
+                <th>Quantity needed</th>
+                <th>Quantity available</th>
                 <th>Shortage</th>
-                <th>Days Delayed</th>
+                <th>Days delayed</th>
                 <th>Priority</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="item in backlogItems" :key="item.id">
-                <td><strong>{{ item.order_id }}</strong></td>
-                <td><strong>{{ item.item_sku }}</strong></td>
+                <td class="num"><strong>{{ item.order_id }}</strong></td>
+                <td class="num"><strong>{{ item.item_sku }}</strong></td>
                 <td>{{ item.item_name }}</td>
-                <td>{{ item.quantity_needed }}</td>
-                <td>{{ item.quantity_available }}</td>
+                <td class="num">{{ item.quantity_needed }}</td>
+                <td class="num">{{ item.quantity_available }}</td>
                 <td>
-                  <span class="badge danger">
+                  <span class="badge danger num">
                     {{ item.quantity_needed - item.quantity_available }} units short
                   </span>
                 </td>
                 <td>
-                  <span :style="{ color: item.days_delayed > 7 ? '#ef4444' : '#f59e0b' }">
+                  <span class="num" :class="item.days_delayed > 7 ? 'delay-danger' : 'delay-warning'">
                     {{ item.days_delayed }} days
                   </span>
                 </td>
@@ -150,3 +150,24 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.empty-state {
+  padding: var(--space-10);
+  text-align: center;
+}
+
+.empty-message {
+  font-size: 1.125rem;
+  color: var(--success);
+  font-weight: 600;
+}
+
+.delay-danger {
+  color: var(--danger);
+}
+
+.delay-warning {
+  color: var(--warning);
+}
+</style>
