@@ -73,15 +73,27 @@ class TestDemandEndpoints:
         # Check for the new items we added
         skus = [item["item_sku"] for item in data]
 
-        # Should have Temperature Sensor Module and Logic Controller Board
-        assert "SNR-420" in skus, "Missing Temperature Sensor Module"
-        assert "CTL-330" in skus, "Missing Logic Controller Board"
+        # Should have Pressure Sensor Module and PWM Motor Controller
+        assert "PRS-203" in skus, "Missing Pressure Sensor Module"
+        assert "PWM-404" in skus, "Missing PWM Motor Controller"
 
         # Verify they are marked as stable
         for item in data:
-            if item["item_sku"] in ["SNR-420", "CTL-330"]:
+            if item["item_sku"] in ["PRS-203", "PWM-404"]:
                 assert item["trend"].lower() == "stable", \
                     f"New item {item['item_name']} should have stable trend"
+
+    def test_demand_forecast_skus_exist_in_inventory(self, client):
+        """Test that every forecast SKU refers to a real inventory item.
+
+        Restocking joins demand to inventory for cost and stock level, so a
+        forecast for a SKU we do not stock silently drops out of the plan.
+        """
+        inventory_skus = {item["sku"] for item in client.get("/api/inventory").json()}
+
+        for forecast in client.get("/api/demand").json():
+            assert forecast["item_sku"] in inventory_skus, \
+                f"Forecast SKU {forecast['item_sku']} is not in inventory"
 
 
 class TestBacklogEndpoints:
@@ -203,6 +215,42 @@ class TestSpendingEndpoints:
         if len(data) > 0:
             category_data = data[0]
             assert "category" in category_data or "name" in category_data
+
+    def test_category_spending_percentages_match_amounts(self, client):
+        """Test that each category's percentage is its real share of the total.
+
+        These percentages used to be stored next to the amounts in
+        spending.json and had drifted: they summed to 123.6%, and Components
+        was labelled a smaller share than Raw Materials despite being the
+        larger amount. The client uses the number for the bar width as well as
+        the label, so the bars were wrong too. They are derived now.
+        """
+        response = client.get("/api/spending/categories")
+        assert response.status_code == 200
+
+        data = response.json()
+        assert len(data) > 0
+
+        total = sum(category["amount"] for category in data)
+        assert total > 0
+
+        for category in data:
+            expected = round(category["amount"] / total * 100, 1)
+            assert abs(category["percentage"] - expected) < 0.01, \
+                f"{category['category']} reports {category['percentage']}%, expected {expected}%"
+
+        assert abs(sum(category["percentage"] for category in data) - 100) < 0.5
+
+    def test_category_spending_percentages_rank_with_amounts(self, client):
+        """Test that a larger amount never reports a smaller percentage."""
+        response = client.get("/api/spending/categories")
+        data = response.json()
+
+        by_amount = sorted(data, key=lambda category: category["amount"], reverse=True)
+        percentages = [category["percentage"] for category in by_amount]
+
+        assert percentages == sorted(percentages, reverse=True), \
+            "Percentages should fall in the same order as the amounts"
 
     def test_get_recent_transactions(self, client):
         """Test getting recent transactions."""

@@ -6,8 +6,11 @@ export default {
     orders: '注文',
     finance: '財務',
     demandForecast: '需要予測',
+    restocking: '補充発注',
+    reports: 'レポート',
     companyName: '触媒コンポーネンツ',
-    subtitle: '在庫管理システム'
+    subtitle: '在庫管理システム',
+    toggleSidebar: 'サイドバーを切り替え'
   },
 
   // Dashboard
@@ -112,6 +115,10 @@ export default {
     onTimeDelivery: '定時配達',
     itemsCount: '{count}件',
     quantity: '数量',
+    submittedOrders: '送信済み発注',
+    submittedOrdersNote: 'このセッションで送信された補充発注です。メモリ上に保持されており、サーバーの再起動時に消去されます。',
+    leadTime: 'リードタイム',
+    leadTimeDays: '{days}日',
     table: {
       orderNumber: '注文番号',
       orderId: '注文ID',
@@ -185,6 +192,72 @@ export default {
       change: '変化',
       trend: 'トレンド',
       period: '期間'
+    }
+  },
+
+  // Restocking
+  restocking: {
+    title: '補充発注',
+    description: '予算を設定し、需要予測から補充すべき品目を確認します',
+    availableBudget: '利用可能予算',
+    budgetHelp: 'スライダーで今期の予算を設定してください',
+    allocated: '割当額',
+    remaining: '残額',
+    itemsSelected: '選択品目数',
+    recommendations: '推奨補充品目',
+    planCost: 'すべて補充する場合の費用は{cost}です',
+    placeOrder: '発注する',
+    placingOrder: '発注処理中...',
+    orderPlaced: '補充発注{orderNumber}を送信しました。',
+    viewInOrders: '注文画面で確認',
+    noRecommendations: '現在のフィルタ条件では補充が必要な品目はありません。',
+    included: '対象',
+    overBudget: '予算超過',
+    urgency: '緊急度',
+    table: {
+      sku: 'SKU',
+      itemName: '品目名',
+      warehouse: '倉庫',
+      category: 'カテゴリ',
+      urgency: '緊急度',
+      onHand: '在庫数',
+      forecast: '予測需要',
+      recommendedQty: '推奨数量',
+      unitCost: '単価',
+      estimatedCost: '概算費用',
+      leadTime: 'リードタイム',
+      included: '対象'
+    }
+  },
+
+  // Purchase Orders
+  purchaseOrder: {
+    createButton: '発注書を作成',
+    viewButton: '発注書を見る',
+    createTitle: '発注書を作成',
+    viewTitle: '発注書の詳細',
+    supplierName: 'サプライヤー名',
+    supplierNamePlaceholder: 'サプライヤー名を入力...',
+    quantity: '数量',
+    unitCost: '単価',
+    totalCost: '合計金額',
+    expectedDeliveryDate: '納品予定日',
+    notes: '備考',
+    notesPlaceholder: '備考（任意）...',
+    status: 'ステータス',
+    createdDate: '作成日',
+    submit: '発注書を作成',
+    submitting: '作成中...',
+    errors: {
+      supplierRequired: 'サプライヤー名を入力してください',
+      quantityPositive: '数量は1以上を入力してください',
+      unitCostRequired: '単価を入力してください',
+      unitCostNonNegative: '単価は0以上を入力してください',
+      deliveryDateRequired: '納品予定日を入力してください',
+      createFailed: '発注書の作成に失敗しました。もう一度お試しください。',
+      duplicate: 'この品目にはすでに発注書があります。',
+      loadFailed: '発注書の読み込みに失敗しました。もう一度お試しください。',
+      notFound: 'この品目の発注書が見つかりません。'
     }
   },
 

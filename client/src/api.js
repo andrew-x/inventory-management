@@ -102,5 +102,33 @@ export const api = {
   async getPurchaseOrderByBacklogItem(backlogItemId) {
     const response = await axios.get(`${API_BASE_URL}/purchase-orders/${backlogItemId}`)
     return response.data
+  },
+
+  async getRestockRecommendations(filters = {}) {
+    const params = new URLSearchParams()
+    // budget needs its own guard: 0 is a meaningful budget but falsy, so the
+    // shared `if (value && value !== 'all')` idiom would drop it.
+    if (filters.budget !== undefined && filters.budget !== null) {
+      params.append('budget', filters.budget)
+    }
+    if (filters.warehouse && filters.warehouse !== 'all') params.append('warehouse', filters.warehouse)
+    if (filters.category && filters.category !== 'all') params.append('category', filters.category)
+
+    const response = await axios.get(`${API_BASE_URL}/restock/recommendations?${params.toString()}`)
+    return response.data
+  },
+
+  async createRestockOrder(restockOrderData) {
+    const response = await axios.post(`${API_BASE_URL}/restock-orders`, restockOrderData)
+    return response.data
+  },
+
+  async getRestockOrders(filters = {}) {
+    const params = new URLSearchParams()
+    if (filters.warehouse && filters.warehouse !== 'all') params.append('warehouse', filters.warehouse)
+    if (filters.category && filters.category !== 'all') params.append('category', filters.category)
+
+    const response = await axios.get(`${API_BASE_URL}/restock-orders?${params.toString()}`)
+    return response.data
   }
 }
